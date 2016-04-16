@@ -14,7 +14,9 @@ domoticz = require("domoticz")
 canSleep = false
 prepareToSleep = false
 reportStarted = false
+uptime = 0
 warmupCounter = 3
+
 function report()
     wifimanager.connect(WIFI_SSID, WIFI_KEY)
     tmr.alarm(1, 100, 1, function()
@@ -27,23 +29,30 @@ function report()
                     domoticz.sendData(1, {temp, humi})
                 end
 
+                domoticzQueue = domoticz.getQueueSize()
+                canSleep = true
+            elseif wifimanager.cannotConnect() == true and canSleep == false then
+                print("Connection failed")
                 canSleep = true
             end
 
             if canSleep == true and domoticz ~= nil and domoticz.getQueueSize() == 0 then
-                print("Going sleep")
                 tmr.stop(1)
-                node.dsleep(1000000 * reportInterval, 0)
+                uptime = tmr.now() - startTime
+                print("Going sleep")
+                sleeptime = (1000000 * reportInterval) - uptime + 1000000
+                node.dsleep(sleeptime, 0)
             end
         end
     end)
 end
 
+counter = warmupCounter
 uart.write(0, "Starting in ")
 tmr.alarm(0, 1000, 1, function() 
-    if (warmupCounter > 0) then 
-        uart.write(0, warmupCounter .. "... ")
-        warmupCounter = warmupCounter - 1
+    if (counter > 0) then 
+        uart.write(0, counter .. "... ")
+        counter = counter - 1
     else 
         print("0")
         reportStarted = true
@@ -51,4 +60,5 @@ tmr.alarm(0, 1000, 1, function()
         report()
     end
 end)
+startTime = tmr.now()
 

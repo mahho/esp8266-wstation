@@ -16,7 +16,7 @@ function M.init(host, port)
     conn = net.createConnection(net.TCP, 0)
     conn:connect(port, host)
 
-    tmr.alarm(3, 500, 1, function()
+    tmr.alarm(3, 200, 1, function()
         processQueue()
     end)
 end
@@ -44,7 +44,11 @@ function M.sendData(idx, data)
 end
 
 function M.getQueueSize()
-    return table.getn(queue)
+    if queue ~= nil then
+        return table.getn(queue)
+    else
+        return 0
+    end
 end
 
 return M
