@@ -1,16 +1,20 @@
-WIFI_SSID = "Network ESSID"
-WIFI_KEY = "Network password"
+WIFI_SSID = "NETGEAR24"
+WIFI_KEY = "klucz123"
 DOMOTICZ_PORT = 8080
-DOMOTICZ_HOST = "192.168.X.Y"
+DOMOTICZ_HOST = "192.168.1.1"
 
 -- PINS
 DHT22_PIN = 4 -- data pin, GPIO2
 
 reportInterval = 300 -- esp deepsleep time in seconds
 
+BMP180_OSS = 2
+BMP180_SDA_PIN = 1 -- GPIO5 
+BMP180_SCL_PIN = 2 -- GPIO4
 ------------------------------------------------
 wifimanager = require("wifimanager")
-domoticz = require("domoticz")
+
+
 canSleep = false
 prepareToSleep = false
 reportStarted = false
@@ -22,12 +26,24 @@ function report()
     tmr.alarm(1, 100, 1, function()
         if reportStarted == true then
             if wifimanager.isConnected() == true and canSleep == false then
-                domoticz.init(DOMOTICZ_HOST, DOMOTICZ_PORT)
+                bmp180 = require("bmp180")
+                bmp180.init(BMP180_SDA_PIN, BMP180_SCL_PIN)
+                bmp180.read(BMP180_OSS)
+                t = bmp180.getTemperature()
+                p = bmp180.getPressure()
+                rp = bmp180.getRealPressure(320)
+                bmpTemp = string.format("%.2f", t / 10)
+                pressure = string.format("%.3f", rp)
+                bmp180 = nil
+                package.loaded["bmp180"]=nil
 
+                domoticz = require("domoticz")
+                domoticz.init(DOMOTICZ_HOST, DOMOTICZ_PORT)
                 status, temp, humi, temp_dec, humi_dec = dht.readxx(DHT22_PIN)                
                 if status == dht.OK then
-                    domoticz.sendData(1, {temp, humi})
+                    domoticz.sendData(1, {temp, humi, 0})
                 end
+                domoticz.sendData(2, {bmpTemp, humi, 0, pressure, 0})
 
                 domoticzQueue = domoticz.getQueueSize()
                 canSleep = true
